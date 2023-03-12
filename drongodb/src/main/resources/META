@@ -1,0 +1,10 @@
+{
+    "version" : "1.0",
+    "ref" : "",
+    "currentCount" : 0,
+    "currentCountStatus" : "ok",
+    "mergeCount" : 0,
+    "mergeCountStatus" : "ok",
+    "heapCount" : 0,
+    "heapCountStatus" : "ok"
+}
