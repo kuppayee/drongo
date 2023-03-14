@@ -10,8 +10,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import in.drongo.drongodb.DrongoDB;
 import in.drongo.drongodb.exception.DrongoDBFileLockException;
+import in.drongo.drongodb.internal.schema.MetaFile;
 import in.drongo.drongodb.internal.service.CompactAndMergeService;
-import in.drongo.drongodb.internal.service.CrashRecoveryService;
 import in.drongo.drongodb.internal.service.MemTableService;
 import lombok.SneakyThrows;
 import lombok.ToString;
@@ -27,6 +27,7 @@ public class DefaultDrongoDB extends DrongoDB {
 
     private FileLock dbFileLock;
     private Lock writeLock;
+    private MetaFile metaFile;
     private MemTableService memTableService;
     private CompactAndMergeService compactAndMergeService;
     
@@ -39,8 +40,10 @@ public class DefaultDrongoDB extends DrongoDB {
             drongoDBOptions.validateDrongoDBOptions();
             writeLock = new ReentrantLock();
             dbFileLock = tryDBFileLock();
-            memTableService = new MemTableService(directory, drongoDBOptions);
-            compactAndMergeService = new CompactAndMergeService(directory, drongoDBOptions);
+            metaFile = MetaFile.getInstance();
+            metaFile.initMetaFile(directory);
+            memTableService = new MemTableService(directory, drongoDBOptions, metaFile);
+            compactAndMergeService = new CompactAndMergeService(directory, drongoDBOptions, metaFile);
 
         } catch (Throwable t) {
             if (dbFileLock != null) {

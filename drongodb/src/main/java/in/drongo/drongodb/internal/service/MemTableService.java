@@ -12,6 +12,7 @@ import in.drongo.drongodb.DrongoDBOptions;
 import in.drongo.drongodb.exception.DrongoDBFileEntryException;
 import in.drongo.drongodb.internal.schema.FileEntry;
 import in.drongo.drongodb.internal.schema.MemTable;
+import in.drongo.drongodb.internal.schema.MetaFile;
 import in.drongo.drongodb.internal.schema.SSTable;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -21,22 +22,24 @@ public class MemTableService {
     public static final int MAX_RETRY_NUMBER = 4;
     private final File directory;
     private final DrongoDBOptions drongoDBOptions;
+    private final MetaFile metaFile;
     private final CrashRecoveryService crashRecoveryService;
     private SSTableService ssTableService;
     private volatile MemTable<byte[], FileEntry> memTable;
-    private InMemoryIndexService inMemoryIndexService;
+    private final InMemoryIndexService inMemoryIndexService;
     private ReentrantReadWriteLock balancedBSTLock = new ReentrantReadWriteLock();
     private final Lock writeLock = balancedBSTLock.writeLock();
     private final Lock readLock = balancedBSTLock.readLock();
 
     @SneakyThrows
-    public MemTableService(File directory, DrongoDBOptions drongoDBOptions) {
+    public MemTableService(File directory, DrongoDBOptions drongoDBOptions, MetaFile metaFile) {
         this.directory = directory;
         this.drongoDBOptions = drongoDBOptions;
+        this.metaFile = metaFile;
         memTable = new MemTable<>(this.drongoDBOptions);
         crashRecoveryService = new CrashRecoveryService(this.directory);
         crashRecoveryService.recoverMemTable(memTable);
-        inMemoryIndexService = new InMemoryIndexService(directory, drongoDBOptions);
+        inMemoryIndexService = new InMemoryIndexService(directory, drongoDBOptions, this.metaFile);
         ssTableService = new SSTableService(this.directory, memTable, inMemoryIndexService);
     }
 
@@ -54,15 +57,10 @@ public class MemTableService {
             try {
                 writeLock.lock();
                 memTable = new MemTable<>(drongoDBOptions);
-            } finally {
-                writeLock.unlock();
-            }
-            ssTableService = new SSTableService(this.directory, memTable, inMemoryIndexService);
-            //clear and write again CrashRecoveryService
-            crashRecoveryService.writeNewRecoveryLog(fileEntry);
-            //write to MemTable
-            try {
-                writeLock.lock();
+	            ssTableService = new SSTableService(this.directory, memTable, inMemoryIndexService);
+	            //clear and write again CrashRecoveryService
+	            crashRecoveryService.writeNewRecoveryLog(fileEntry);
+	            //write to MemTable
                 memTable.put(key, fileEntry);
             } finally {
                 writeLock.unlock();

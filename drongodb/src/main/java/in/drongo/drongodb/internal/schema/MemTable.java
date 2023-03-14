@@ -4,8 +4,6 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import in.drongo.drongodb.DrongoDBOptions;
 import lombok.extern.slf4j.Slf4j;

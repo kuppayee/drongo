@@ -26,7 +26,7 @@ public class FileUtil {
         File[] files = directory.listFiles();
         for (File file : files) {
             if(file.getName().startsWith(prefix)) {
-                long age = Long.parseLong(file.getName().substring(8));
+                long age = Long.parseLong(file.getName().substring(7));
                 if (age <= curFile) {
                     fileNames.add(age);
                 }

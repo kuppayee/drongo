@@ -1,8 +1,6 @@
 package in.drongo.drongodb.internal.service;
 
 import java.io.File;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import in.drongo.drongodb.internal.schema.FileEntry;
 import in.drongo.drongodb.internal.schema.MemTable;
@@ -23,7 +21,6 @@ public class CrashRecoveryService {
     }
     
     public void writeNewRecoveryLog(FileEntry fileEntry) {
-        memTableWriteAheadLog.backupRecoveryLog();
         memTableWriteAheadLog.clearAndwriteRecoveryLog(fileEntry);
     }
     
