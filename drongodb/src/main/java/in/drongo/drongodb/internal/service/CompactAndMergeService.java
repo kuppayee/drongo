@@ -17,8 +17,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import in.drongo.drongodb.DrongoDBOptions;
 import in.drongo.drongodb.internal.schema.FileEntry;
 import in.drongo.drongodb.internal.schema.MemTable;
@@ -26,7 +24,6 @@ import in.drongo.drongodb.internal.schema.MetaFile;
 import in.drongo.drongodb.internal.schema.SSTable;
 import in.drongo.drongodb.util.CodecUtil;
 import in.drongo.drongodb.util.FileUtil;
-import in.drongo.drongodb.util.Todo;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 @Slf4j
@@ -47,19 +44,19 @@ public class CompactAndMergeService {
                 }
             });
     private static final Lock writeLock = new ReentrantLock(true);
+    private MetaFile metaFile;
     private volatile PartialWriteRecoveryService partialWriteRecoveryService;
     private volatile CheckSumService checkSumService;
     private volatile File directory;
     private volatile DrongoDBOptions drongoDBOptions;
-    private volatile String currentSSTableName;
 
-
-    public CompactAndMergeService(File directory, DrongoDBOptions drongoDBOptions) {
+    public CompactAndMergeService(File directory, DrongoDBOptions drongoDBOptions, MetaFile metaFile) {
         this.directory = directory;
         this.drongoDBOptions = drongoDBOptions;
+        this.metaFile = metaFile;
         run();
     }
-
+    
     private void run() {
         compactAndMergeService
         .scheduleWithFixedDelay(() -> compactAndMerge(), 
@@ -69,12 +66,12 @@ public class CompactAndMergeService {
     private void compactAndMerge() {
         if (writeLock.tryLock()) {
             try {
-                if (getSSTableCount() < 4) {//size-tiered compaction strategy (STCS)
+                if (getSSTableCountNow() < 4) {//size-tiered compaction strategy (STCS)
                     return;
                 }
                 //do compactAndMerge
                 final List<Long> sstablesNames = 
-                        FileUtil.getFileNamesStartsWith(directory, "SSTABLE", Long.parseLong(currentSSTableName));
+                        FileUtil.getFileNamesStartsWith(directory, "SSTABLE", Long.parseLong(getSSTableNameNow()));
                 Collections.sort(sstablesNames, Comparator.reverseOrder());
                 //merge newer to older update meta file
                 Map<ByteBuffer, FileEntry> mergeTree = new TreeMap<>();
@@ -89,19 +86,11 @@ public class CompactAndMergeService {
         }
     }
 
-    private int getSSTableCount() {
-        final MetaFile metaFile = new MetaFile(directory);
-        try {
-            final JsonNode root = metaFile.lockMetaFileNode();
-            if (root == null) {
-                log.warn("MetaFile in Use.");
-                return 0;
-            }
-            currentSSTableName = root.get("ref").asText();
-            return root.get("currentCount").asInt();
-        } finally {
-            metaFile.unlockMetaFileNode();
-        }
+    private int getSSTableCountNow() {
+        return metaFile.load().get("currentCount").asInt();
+    }
+    private String getSSTableNameNow() {
+        return metaFile.load().get("ref").asText();
     }
 
     @SneakyThrows
