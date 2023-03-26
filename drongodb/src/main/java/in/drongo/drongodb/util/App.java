@@ -1,33 +1,11 @@
 package in.drongo.drongodb.util;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-import org.apache.commons.codec.binary.Hex;
-import org.msgpack.core.MessageBufferPacker;
-import org.msgpack.core.MessagePack;
-import org.msgpack.core.MessageUnpacker;
-
 /**
  * Hello world!
  *
  */
 public class App {
 	public static void main(String[] args) throws Exception {
-
-		String json = Files.readString(Paths.get("src/petstore.json"));
-		json = "{\"name\":\"Error\",\"message\":\"hello\"}";
-		//System.out.println(json.getBytes().length);
-		String record = "1xyzjjjjjjjjjj" + json;
-		MessageBufferPacker messageBufferPacker = MessagePack.newDefaultBufferPacker();
-		messageBufferPacker.packBinaryHeader(record.getBytes().length);
-		messageBufferPacker.writePayload(record.getBytes());
-		String hexStr = Hex.encodeHexString(messageBufferPacker.toByteArray());
-		
-		MessageUnpacker messageUnpacker = MessagePack.newDefaultUnpacker(Hex.decodeHex(hexStr));
-		int hi = messageUnpacker.unpackBinaryHeader();
-		byte[] payLoad = messageUnpacker.readPayload((int) hi);
-		System.out.println(new String(payLoad));
 		
 		long address = com.sun.jna.Native.malloc(11);
 		//static native void write(long addr, byte[] buf, int index, int length);

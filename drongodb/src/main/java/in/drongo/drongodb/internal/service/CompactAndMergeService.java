@@ -45,15 +45,17 @@ public class CompactAndMergeService {
             });
     private static final Lock writeLock = new ReentrantLock(true);
     private MetaFile metaFile;
+    private CrashRecoveryService crashRecoveryService;
     private volatile PartialWriteRecoveryService partialWriteRecoveryService;
     private volatile CheckSumService checkSumService;
     private volatile File directory;
     private volatile DrongoDBOptions drongoDBOptions;
 
-    public CompactAndMergeService(File directory, DrongoDBOptions drongoDBOptions, MetaFile metaFile) {
+    public CompactAndMergeService(File directory, DrongoDBOptions drongoDBOptions, MetaFile metaFile, CrashRecoveryService crashRecoveryService) {
         this.directory = directory;
         this.drongoDBOptions = drongoDBOptions;
         this.metaFile = metaFile;
+        this.crashRecoveryService = crashRecoveryService;
         run();
     }
     
