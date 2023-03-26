@@ -32,13 +32,14 @@ public class MemTableService {
     private final Lock readLock = balancedBSTLock.readLock();
 
     @SneakyThrows
-    public MemTableService(File directory, DrongoDBOptions drongoDBOptions, MetaFile metaFile) {
+    public MemTableService(File directory, DrongoDBOptions drongoDBOptions, MetaFile metaFile, 
+    		CrashRecoveryService crashRecoveryService) {
         this.directory = directory;
         this.drongoDBOptions = drongoDBOptions;
         this.metaFile = metaFile;
         memTable = new MemTable<>(this.drongoDBOptions);
-        crashRecoveryService = new CrashRecoveryService(this.directory);
-        crashRecoveryService.recoverMemTable(memTable);
+        this.crashRecoveryService = crashRecoveryService;
+        this.crashRecoveryService.recoverMemTable(memTable);
         inMemoryIndexService = new InMemoryIndexService(directory, drongoDBOptions, this.metaFile);
         ssTableService = new SSTableService(this.directory, memTable, inMemoryIndexService);
     }

@@ -1,82 +1,112 @@
 package in.drongo.drongodb.util;
 
-import java.io.File;
-import java.io.RandomAccessFile;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
+import java.util.Map;
+import java.util.TreeMap;
 
-import in.drongo.drongodb.DrongoDBOptions;
-import in.drongo.drongodb.internal.schema.FileEntry;
-import in.drongo.drongodb.internal.schema.MemTable;
-import lombok.SneakyThrows;
+import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
+import org.apache.avro.io.DatumReader;
+import org.apache.avro.io.DatumWriter;
+import org.apache.avro.io.Decoder;
+import org.apache.avro.io.DecoderFactory;
+import org.apache.avro.io.Encoder;
+import org.apache.avro.io.EncoderFactory;
+import org.apache.avro.specific.SpecificDatumReader;
+import org.apache.avro.specific.SpecificDatumWriter;
+
+import in.drongo.drongodb.util.avro.FileEntryAvro;
+import in.drongo.drongodb.util.avro.MemTableAvro;
 
 public class Todo {
-    public static void main(String[] args) throws Exception {
-    	MemTable<byte[], FileEntry> memTable = new MemTable<byte[], FileEntry>(new DrongoDBOptions());
-    	recoverMemTable(memTable);
-    	//System.out.println(memTable);
-    }
-    
-    @SneakyThrows
-    public static void recoverMemTable(MemTable<byte[], FileEntry> memTable) {
-        try {
-        	var walChannel = new RandomAccessFile(new File("C:/demo/WAL"), "rw").getChannel();
-        	for (long ssTableSize = 0; ssTableSize < walChannel.size();) {
-                ByteBuffer buffId = ByteBuffer.wrap(new byte[32]);
-                walChannel.read(buffId);
-                if (new String(buffId.array()).trim().isEmpty()) {
-                    break;
-                }
-                ByteBuffer buffKeyLen = ByteBuffer.wrap(new byte[8]);
-                walChannel.read(buffKeyLen);
-                byte[] key = new byte[(int) CodecUtil.convertToLongFromByteArray(buffKeyLen.array())];
-                ByteBuffer buffKey = ByteBuffer.wrap(key);
-                walChannel.read(buffKey);
-                ByteBuffer buffValueLen = ByteBuffer.wrap(new byte[8]);
-                walChannel.read(buffValueLen);
-                byte[] value = new byte[(int) CodecUtil.convertToLongFromByteArray(buffValueLen.array())];
-                ByteBuffer buffValue = ByteBuffer.wrap(value);
-                walChannel.read(buffValue);
-                memTable.getFileEntries().put(ByteBuffer.wrap(key), new FileEntry.Builder(key, value).build());
-                System.out.println(new String(key) + "=" + new String(value));
-                ssTableSize = walChannel.position();
-            }
-        } finally {
-            //redoLog.close();
-        }
-    }
-    
-    public static void recoverMemTable0(MemTable<byte[], FileEntry> memTable) throws Exception {
-    	var walChannel = new RandomAccessFile(new File("C:/demo/SSTABLE99724900696000"), "rw").getChannel();
-        try {
-            final MappedByteBuffer mappedByteBuffer 
-            = walChannel.map(FileChannel.MapMode.READ_ONLY, 0, walChannel.size());
-            for (long ssTableSize = 0; ssTableSize < walChannel.size();) {
-                byte[] id = new byte[32];
-                mappedByteBuffer.get(id);
-                if (new String(id).trim().isEmpty()) {
-                    break;
-                }
-                System.out.println("id?" + new String(id));
-                byte[] keyLen = new byte[8];
-                mappedByteBuffer.get(keyLen);
-                System.out.println("keyLen?" + CodecUtil.convertToLongFromByteArray(keyLen));
-                byte[] key = new byte[(int) CodecUtil.convertToLongFromByteArray(keyLen)];
-                mappedByteBuffer.get(key);
-                System.out.println("keyLen?" + new String(key));
-                byte[] valueLen = new byte[8];
-                mappedByteBuffer.get(valueLen);
-                System.out.println("valueLen?" + new String(valueLen));
-                byte[] value = new byte[(int) CodecUtil.convertToLongFromByteArray(valueLen)];
-                mappedByteBuffer.get(value);
-                System.out.println("value?" + new String(value));
-                memTable.getFileEntries().put(ByteBuffer.wrap(key), new FileEntry.Builder(key, value).build());
-                ssTableSize = mappedByteBuffer.position();break;
-            }
-        } finally {
-            walChannel.close();
-        }
-    }
-    
+	public static void main(String[] args) throws Exception {
+		/*public final byte[] id;//32 bytes
+        public final byte[] keyLen;//8 bytes
+        public final byte[] key;
+        public final byte[] valueLen;//8 bytes
+        public final byte[] value;*/
+		Schema schema = SchemaBuilder.record("MemTableAvro")
+				.namespace("in.drongo.drongodb.util.avro")
+				.fields()
+				.name("balancedBST")
+				.type().map()
+				.values(SchemaBuilder.record("FileEntryAvro")
+						.namespace("in.drongo.drongodb.util.avro")
+						.fields()
+						.name("id")
+						.type().bytesType().noDefault()
+						.name("keyLen")
+						.type().bytesType().noDefault()
+						.name("key")
+						.type().bytesType().noDefault()
+						.name("valueLen")
+						.type().bytesType().noDefault()
+						.name("value")
+						.type().bytesType().noDefault()
+						.endRecord())
+				.noDefault()
+				.endRecord();
+		System.out.println(schema);
+		MemTableAvro avro = new MemTableAvro();
+		FileEntryAvro fe = new FileEntryAvro();
+		ByteBuffer bb = ByteBuffer.allocate(4);
+		bb.putInt(5);bb.flip();
+		fe.setId(bb);
+		ByteBuffer bb1 = ByteBuffer.allocate(4);
+		bb1.putInt(5);bb1.flip();
+		fe.setKeyLen(bb1);
+		ByteBuffer bb2 = ByteBuffer.allocate(4);
+		bb2.putInt(5);bb2.flip();
+		fe.setKey(bb2);
+		ByteBuffer bb3 = ByteBuffer.allocate(4);
+		bb3.putInt(5);bb3.flip();
+		fe.setValueLen(bb3);
+		ByteBuffer bb4 = ByteBuffer.allocate(4);
+		bb4.putInt(5);bb4.flip();
+		fe.setValue(bb4);
+		Map<Integer, FileEntryAvro> map = new TreeMap<>(); 
+		map.put(1, fe);map.put(2, fe);
+		avro.put("balancedBST", map);
+		byte[] ret = serializeAvroHttpRequestJSON(avro, schema);
+		System.out.println("ret?" + new String(ret));
+		MemTableAvro ds = deSerializeAvroHttpRequestJSON(ret);
+		((Map)ds.get("balancedBST")).forEach((key, value)-> {
+			System.out.println("::::" + key);
+		});
+	}
+
+	public static byte[] serializeAvroHttpRequestJSON(MemTableAvro request, Schema schema) throws Exception{
+
+		DatumWriter<MemTableAvro> writer = new SpecificDatumWriter<>(MemTableAvro.class);
+		byte[] data = new byte[0];
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		Encoder jsonEncoder = null;
+		try {
+			jsonEncoder = EncoderFactory.get().binaryEncoder(stream, null);
+			writer.write(request, jsonEncoder);
+			jsonEncoder.flush();
+			data = stream.toByteArray();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return data;
+	}
+	
+	public static MemTableAvro deSerializeAvroHttpRequestJSON(byte[] data) throws Exception {
+	    DatumReader<MemTableAvro> reader
+	     = new SpecificDatumReader<>(MemTableAvro.class);
+	    ByteArrayInputStream stream = new ByteArrayInputStream(data);
+	    Decoder decoder = null;
+	    try {
+	        decoder = DecoderFactory.get().binaryDecoder(stream, null);
+	        return reader.read(null, decoder);
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	    return null;
+	}
+
 }

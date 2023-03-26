@@ -11,8 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MemTableWriteAheadLog {
-	FileChannel walChannel;
-	File directory;
+	final FileChannel walChannel;
+	final File directory;
 	@SneakyThrows
 	public MemTableWriteAheadLog(File directory) {
 		this.directory = directory;

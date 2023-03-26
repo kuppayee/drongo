@@ -1,0 +1,1 @@
+{"type":"record","name":"MemTableAvro","namespace":"in.drongo.drongodb.util.avro","fields":[{"name":"balancedBST","type":{"type":"map","values":{"type":"record","name":"FileEntryAvro","fields":[{"name":"id","type":"bytes"},{"name":"keyLen","type":"bytes"},{"name":"key","type":"bytes"},{"name":"valueLen","type":"bytes"},{"name":"value","type":"bytes"}]}}}]}
