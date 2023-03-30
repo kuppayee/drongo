@@ -45,6 +45,7 @@ public class CompactAndMergeService {
             });
     private static final Lock writeLock = new ReentrantLock(true);
     private MetaFile metaFile;
+    private final MemTableSnapshotService memTableSnapshotService;
     private CrashRecoveryService crashRecoveryService;
     private volatile PartialWriteRecoveryService partialWriteRecoveryService;
     private volatile CheckSumService checkSumService;
@@ -54,6 +55,7 @@ public class CompactAndMergeService {
     public CompactAndMergeService(File directory, DrongoDBOptions drongoDBOptions, MetaFile metaFile, CrashRecoveryService crashRecoveryService) {
         this.directory = directory;
         this.drongoDBOptions = drongoDBOptions;
+        memTableSnapshotService = new MemTableSnapshotService(drongoDBOptions);
         this.metaFile = metaFile;
         this.crashRecoveryService = crashRecoveryService;
         run();
@@ -78,10 +80,13 @@ public class CompactAndMergeService {
                 //merge newer to older update meta file
                 Map<ByteBuffer, FileEntry> mergeTree = new TreeMap<>();
                 compactAndMergeSSTable(mergeTree, sstablesNames);
-                //write mergeTree to HEAP.merge
+                //take mergeTree snapshot
+                memTableSnapshotService.mergeTree(mergeTree);
+                memTableSnapshotService.doSnapshot();
+                System.out.println("snap>>>>>>>");
                 //delete SSTables
-                //merge HEAP.merge and HEAP file, write to new HEAP file
-                //delete HEAP.merge and old HEAP file
+                //merge mergeTree and HEAP file, write to new HEAP file
+                //delete mergeTree snapshot and old HEAP file
             } finally {
                 writeLock.unlock();
             }

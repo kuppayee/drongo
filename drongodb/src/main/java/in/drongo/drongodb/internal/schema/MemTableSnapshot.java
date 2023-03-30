@@ -18,15 +18,18 @@ import org.apache.avro.specific.SpecificDatumWriter;
 
 import in.drongo.drongodb.util.avro.FileEntryAvro;
 import in.drongo.drongodb.util.avro.MemTableAvro;
+import lombok.SneakyThrows;
+
 
 public class MemTableSnapshot {
 	private final Map<ByteBuffer, FileEntry> mergeTree;
 	
-	MemTableSnapshot(Map<ByteBuffer, FileEntry> mergeTree) {
+	public MemTableSnapshot(Map<ByteBuffer, FileEntry> mergeTree) {
 		this.mergeTree = mergeTree;
 	}
 	
-	public byte[] takeSnapshot() throws Exception {
+	@SneakyThrows
+	public byte[] takeSnapshot() {
 		final DatumWriter<MemTableAvro> writer = new SpecificDatumWriter<>(MemTableAvro.class);
 		final ByteArrayOutputStream stream = new ByteArrayOutputStream();
 		final Encoder jsonEncoder = EncoderFactory.get().binaryEncoder(stream, null);
@@ -35,7 +38,8 @@ public class MemTableSnapshot {
 		return stream.toByteArray();
 	}
 	
-	public MemTableAvro getSnapshot(byte[] data) throws Exception {
+	@SneakyThrows
+	public MemTableAvro getSnapshot(byte[] data) {
 	    final DatumReader<MemTableAvro> reader = new SpecificDatumReader<>(MemTableAvro.class);
 	    final ByteArrayInputStream stream = new ByteArrayInputStream(data);
         return reader.read(null, DecoderFactory.get().binaryDecoder(stream, null));
